@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dot Illust Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans JP', 'Inter', sans-serif; }
+        .pixelated { image-rendering: -moz-crisp-edges; image-rendering: -webkit-crisp-edges; image-rendering: pixelated; image-rendering: crisp-edges; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; background: #3b82f6; cursor: pointer; border-radius: 50%; margin-top: -6px; }
+        input[type=range]::-moz-range-thumb { width: 20px; height: 20px; background: #3b82f6; cursor: pointer; border-radius: 50%; }
+        details > summary { cursor: pointer; list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        details > summary::before { content: '▶'; margin-right: 0.5em; display: inline-block; transition: transform 0.2s; }
+        details[open] > summary::before { transform: rotate(90deg); }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 antialiased">
+
+    <div class="container mx-auto px-4 py-8 md:py-12">
+
+        <header class="text-center mb-8 md:mb-12">
+            <a href="https://wipeseals.github.io/dot-illust-converter/">
+              <h1 class="text-3xl md:text-5xl font-bold text-white mb-2">Dot Illust Converter</h1>
+            </a>
+        </header>
+
+        <div id="upload-section" class="max-w-2xl mx-auto bg-gray-800 border-2 border-dashed border-gray-600 rounded-xl p-8 text-center cursor-pointer hover:bg-gray-700 hover:border-blue-500 transition-all duration-300">
+            <input type="file" id="image-uploader" class="hidden" accept="image/*">
+            <div id="upload-prompt">
+                <svg class="mx-auto h-12 w-12 text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                <p class="mt-4 text-lg font-medium text-gray-300">画像ファイルを選択</p>
+                <p class="mt-1 text-sm text-gray-500">または、このエリアにドラッグ＆ドロップしてください</p>
+            </div>
+            <div id="image-preview-container" class="hidden">
+                <img id="image-preview" src="#" alt="アップロードされた画像のプレビュー" class="max-h-64 mx-auto rounded-lg shadow-lg">
+                <button id="reset-button" class="mt-6 bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors">別の画像を試す</button>
+            </div>
+        </div>
+        
+        <div id="manual-section" class="max-w-5xl mx-auto mt-8 hidden lg:grid lg:grid-cols-2 lg:gap-8 items-start">
+            <div id="manual-controls" class="bg-gray-800 rounded-xl p-6 space-y-2">
+                <h3 class="text-xl font-bold text-white mb-2">マニュアル設定</h3>
+                <form id="manual-form" class="space-y-4">
+                    <details open>
+                        <summary class="font-semibold text-lg py-2">基本設定</summary>
+                        <div class="pl-4 pt-2 space-y-4 border-l-2 border-gray-700">
+                             <div><label class="block text-gray-300 mb-2">解像度: <span id="resolution-value">64</span>px</label><input type="range" id="resolution-slider" min="8" max="256" value="64" class="w-full h-2 bg-gray-700 rounded-lg"></div>
+                            <div><label class="block text-gray-300 mb-2">カラーパレット</label><select id="palette-select" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg p-2"></select></div>
+                            <div id="colors-control"><label class="block text-gray-300 mb-2">色数: <span id="colors-value">16</span>色</label><input type="range" id="colors-slider" min="2" max="32" value="16" class="w-full h-2 bg-gray-700 rounded-lg"></div>
+                             <label class="flex items-center text-gray-300"><input type="checkbox" id="dither-checkbox" checked class="h-5 w-5 rounded"><span class="ml-3">ディザリング</span></label>
+                        </div>
+                    </details>
+                    
+                    <details><summary class="font-semibold text-lg py-2">元画像の色調補正 (Pre)</summary><div class="pl-4 pt-2 space-y-4 border-l-2 border-gray-700">
+                        <div><label class="block">明るさ: <span id="pre-brightness-value">0</span></label><input type="range" id="pre-brightness-slider" min="-100" max="100" value="0" class="w-full h-2 bg-gray-700 rounded-lg"></div>
+                        <div><label class="block">コントラスト: <span id="pre-contrast-value">0</span></label><input type="range" id="pre-contrast-slider" min="-100" max="100" value="0" class="w-full h-2 bg-gray-700 rounded-lg"></div>
+                        <div><label class="block">彩度: <span id="pre-saturation-value">0</span></label><input type="range" id="pre-saturation-slider" min="-100" max="100" value="0" class="w-full h-2 bg-gray-700 rounded-lg"></div>
+                        <div><label class="block">色相: <span id="pre-hue-value">0</span>°</label><input type="range" id="pre-hue-slider" min="-180" max="180" value="0" class="w-full h-2 bg-gray-700 rounded-lg"></div>
+                    </div></details>
+
+                    <details><summary class="font-semibold text-lg py-2">アウトライン設定</summary><div class="pl-4 pt-2 space-y-4 border-l-2 border-gray-700">
+                        <label class="flex items-center text-gray-300"><input type="checkbox" id="outline-checkbox" class="h-5 w-5 rounded"><span class="ml-3">アウトラインを追加</span></label>
+                        <div id="outline-options" class="pl-6 space-y-4 hidden">
+                           <div><label class="block">太さ: <span id="outline-thickness-value">1.0</span>px</label><input type="range" id="outline-thickness-slider" min="0.1" max="5" value="1" step="0.1" class="w-full h-2 bg-gray-700 rounded-lg"></div>
+                           <label class="flex items-center text-gray-300"><input type="checkbox" id="outline-dynamic-color-checkbox" class="h-5 w-5 rounded"><span class="ml-3">動的な色 (周辺色より暗く)</span></label>
+                           <div id="outline-color-picker-container"><label class="block">色: </label><input type="color" id="outline-color-picker" value="#000000" class="w-full h-10 bg-gray-700 rounded-lg p-1"></div>
+                        </div>
+                    </div></details>
+
+                     <details><summary class="font-semibold text-lg py-2">最終画像の色調補正 (Post)</summary><div class="pl-4 pt-2 space-y-4 border-l-2 border-gray-700">
+                        <div><label class="block">明るさ: <span id="post-brightness-value">0</span></label><input type="range" id="post-brightness-slider" min="-100" max="100" value="0" class="w-full h-2 bg-gray-700 rounded-lg"></div>
+                        <div><label class="block">コントラスト: <span id="post-contrast-value">0</span></label><input type="range" id="post-contrast-slider" min="-100" max="100" value="0" class="w-full h-2 bg-gray-700 rounded-lg"></div>
+                        <div><label class="block">彩度: <span id="post-saturation-value">0</span></label><input type="range" id="post-saturation-slider" min="-100" max="100" value="0" class="w-full h-2 bg-gray-700 rounded-lg"></div>
+                        <div><label class="block">色相: <span id="post-hue-value">0</span>°</label><input type="range" id="post-hue-slider" min="-180" max="180" value="0" class="w-full h-2 bg-gray-700 rounded-lg"></div>
+                    </div></details>
+
+                    <details><summary class="font-semibold text-lg py-2">設定の保存/復元</summary><div class="pl-4 pt-2 space-y-4 border-l-2 border-gray-700">
+                        <div><label for="json-io-area" class="block mb-2">設定(JSON)</label><textarea id="json-io-area" rows="5" class="w-full bg-gray-900 text-gray-300 rounded-lg p-2 border border-gray-600 focus:ring-blue-500 focus:border-blue-500"></textarea></div>
+                        <div class="flex gap-4"><button type="button" id="export-json-btn" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">現在の設定をエクスポート</button><button type="button" id="import-json-btn" class="w-full bg-teal-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-700">この設定をインポート</button></div>
+                    </div></details>
+
+                </form>
+            </div>
+            <div id="manual-result-container" class="bg-gray-800 rounded-lg shadow-xl overflow-hidden flex flex-col items-center p-4">
+                 <div id="manual-result-placeholder" class="w-full aspect-square bg-gray-900/50 flex items-center justify-center rounded-md mb-4 text-gray-500"><p>設定を調整するとここに結果が表示されます</p></div>
+                <div id="manual-result-tile" class="hidden w-full"><div class="w-full aspect-square bg-gray-900/50 flex items-center justify-center rounded-md mb-4"><canvas id="manual-canvas" class="pixelated max-w-full max-h-full"></canvas></div><p id="manual-label" class="text-center text-gray-300 font-medium text-sm mb-3"></p><button id="manual-download-btn" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">ダウンロード</button></div>
+            </div>
+        </div>
+
+        <div id="results-section" class="mt-12"><h2 id="auto-results-header" class="text-2xl font-bold text-center mb-6 hidden">自動生成パターン</h2><div id="loader" class="hidden justify-center items-center flex-col"><div class="loader"></div><p class="mt-4 text-lg">生成中...</p></div><div id="results-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8"></div></div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const ui = {
+            imageUploader: document.getElementById('image-uploader'), uploadSection: document.getElementById('upload-section'), uploadPrompt: document.getElementById('upload-prompt'), imagePreviewContainer: document.getElementById('image-preview-container'), imagePreview: document.getElementById('image-preview'), resetButton: document.getElementById('reset-button'), loader: document.getElementById('loader'), manualSection: document.getElementById('manual-section'), resolutionSlider: document.getElementById('resolution-slider'), resolutionValue: document.getElementById('resolution-value'), colorsSlider: document.getElementById('colors-slider'), colorsValue: document.getElementById('colors-value'), ditherCheckbox: document.getElementById('dither-checkbox'), paletteSelect: document.getElementById('palette-select'), colorsControl: document.getElementById('colors-control'), preBrightnessSlider: document.getElementById('pre-brightness-slider'), preBrightnessValue: document.getElementById('pre-brightness-value'), preContrastSlider: document.getElementById('pre-contrast-slider'), preContrastValue: document.getElementById('pre-contrast-value'), preSaturationSlider: document.getElementById('pre-saturation-slider'), preSaturationValue: document.getElementById('pre-saturation-value'), preHueSlider: document.getElementById('pre-hue-slider'), preHueValue: document.getElementById('pre-hue-value'), outlineCheckbox: document.getElementById('outline-checkbox'), outlineOptions: document.getElementById('outline-options'), outlineThicknessSlider: document.getElementById('outline-thickness-slider'), outlineThicknessValue: document.getElementById('outline-thickness-value'), outlineDynamicColorCheckbox: document.getElementById('outline-dynamic-color-checkbox'), outlineColorPickerContainer: document.getElementById('outline-color-picker-container'), outlineColorPicker: document.getElementById('outline-color-picker'), postBrightnessSlider: document.getElementById('post-brightness-slider'), postBrightnessValue: document.getElementById('post-brightness-value'), postContrastSlider: document.getElementById('post-contrast-slider'), postContrastValue: document.getElementById('post-contrast-value'), postSaturationSlider: document.getElementById('post-saturation-slider'), postSaturationValue: document.getElementById('post-saturation-value'), postHueSlider: document.getElementById('post-hue-slider'), postHueValue: document.getElementById('post-hue-value'), jsonIoArea: document.getElementById('json-io-area'), exportJsonBtn: document.getElementById('export-json-btn'), importJsonBtn: document.getElementById('import-json-btn'), manualResultTile: document.getElementById('manual-result-tile'), manualResultPlaceholder: document.getElementById('manual-result-placeholder'), manualCanvas: document.getElementById('manual-canvas'), manualLabel: document.getElementById('manual-label'), manualDownloadBtn: document.getElementById('manual-download-btn'), autoResultsHeader: document.getElementById('auto-results-header'), resultsGrid: document.getElementById('results-grid'),
+        };
+        
+        let originalImage = null; let generatedManualCanvas = null; let debounceTimer;
+
+        // --- Constants ---
+        const palettes = { 
+            'auto': { name: '自動抽出', colors: null }, 
+            'gb': { name: 'レトロ携帯機風 (4色)', colors: [[15, 56, 15], [48, 98, 48], [139, 172, 15], [155, 188, 15]] }, 
+            'c64': { name: '80年代PC風 (16色)', colors: [[0,0,0],[255,255,255],[136,0,0],[170,255,238],[204,68,204],[0,204,85],[0,0,170],[238,238,119],[221,136,85],[102,68,0],[255,119,119],[51,51,51],[119,119,119],[170,255,102],[0,136,255],[187,187,187]]}, 
+            'ms': { name: '80年代ゲーム機風 A (16色)', colors: [[0,0,0],[255,255,255],[85,255,85],[170,255,85],[85,85,255],[85,170,255],[255,85,85],[85,255,255],[255,85,255],[255,255,85],[255,170,85],[255,170,170],[85,170,0],[170,85,170],[212,212,212],[255,0,0]] }, 
+            'nes': { name: '80年代ゲーム機風 B (16色)', colors: [[124,124,124], [0,0,252], [68,40,188], [168,0,32], [168,16,0], [136,20,0], [80,48,0], [0,120,0], [0,88,0], [0,64,88], [252,252,252], [0,120,248], [124,88,248], [248,120,184], [248,112,56], [248,184,0], [184,216,0], [60,200,60], [88,184,152], [88,168,224]] }, 
+            'vaporwave': { name: 'サイバーパンク風 (5色)', colors: [[255, 122, 219], [169, 90, 214], [57, 19, 153], [3, 201, 255], [0, 255, 162]] }, 
+            'sepia': { name: 'セピア調 (暖色)', colors: [[94, 63, 40], [179, 112, 64], [227, 184, 120], [240, 223, 189]] }, 
+            'sepia_cool': { name: 'セピア調 (寒色)', colors: [[22, 57, 80], [64, 112, 179], [120, 184, 227], [189, 223, 240]] }, 
+            'grayscale': { name: 'グレースケール', colors: [[0,0,0], [85,85,85], [170,170,170], [255,255,255]] } 
+        };
+        const bayerMatrix = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+        const DITHER_FACTOR = 30;
+        
+        // --- Initialization ---
+        function initialize() {
+            for (const key in palettes) {
+                ui.paletteSelect.add(new Option(palettes[key].name, key));
+            }
+            addEventListeners();
+        }
+
+        // --- Event Listeners ---
+        function addEventListeners() {
+            ui.uploadSection.addEventListener('click', () => ui.imageUploader.click());
+            ui.uploadSection.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); ui.uploadSection.classList.add('bg-gray-700', 'border-blue-500'); });
+            ui.uploadSection.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); ui.uploadSection.classList.remove('bg-gray-700', 'border-blue-500'); });
+            ui.uploadSection.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); ui.uploadSection.classList.remove('bg-gray-700', 'border-blue-500'); if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]); });
+            ui.imageUploader.addEventListener('change', (e) => { if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]); });
+            ui.resetButton.addEventListener('click', resetApp);
+            Object.values(ui).forEach(el => { if(el instanceof HTMLInputElement || el instanceof HTMLSelectElement) { el.addEventListener('input', () => { clearTimeout(debounceTimer); debounceTimer = setTimeout(generateManual, 250); }); }});
+
+            const valueDisplays = {'resolution':ui.resolutionValue, 'colors':ui.colorsValue, 'pre-brightness':ui.preBrightnessValue, 'pre-contrast':ui.preContrastValue, 'pre-saturation':ui.preSaturationValue, 'pre-hue':ui.preHueValue, 'post-brightness':ui.postBrightnessValue, 'post-contrast':ui.postContrastValue, 'post-saturation':ui.postSaturationValue, 'post-hue':ui.postHueValue, 'outline-thickness':ui.outlineThicknessValue};
+            for(const [key, valEl] of Object.entries(valueDisplays)){
+                const slider = document.getElementById(`${key}-slider`);
+                slider.addEventListener('input', (e) => { valEl.textContent = parseFloat(e.target.value).toFixed(key === 'outline-thickness' ? 1:0); });
+            }
+            
+            ui.paletteSelect.addEventListener('change', (e) => { ui.colorsControl.style.display = e.target.value === 'auto' ? 'block' : 'none'; });
+            ui.outlineCheckbox.addEventListener('change', (e) => { ui.outlineOptions.style.display = e.target.checked ? 'block' : 'none'; });
+            ui.outlineDynamicColorCheckbox.addEventListener('change', (e) => { ui.outlineColorPickerContainer.style.display = e.target.checked ? 'none' : 'block'; });
+            ui.exportJsonBtn.addEventListener('click', exportSettings);
+            ui.importJsonBtn.addEventListener('click', importSettings);
+            ui.manualDownloadBtn.addEventListener('click', downloadManualResult);
+        }
+
+        // --- Main Functions ---
+        function handleFile(file) { if (!file.type.startsWith('image/')) { alert('画像ファイルを選択してください。'); return; } const reader = new FileReader(); reader.onload = (e) => { const img = new Image(); img.onload = () => { originalImage = img; ui.imagePreview.src = e.target.result; ui.uploadPrompt.classList.add('hidden'); ui.imagePreviewContainer.classList.remove('hidden'); ui.manualSection.classList.remove('hidden', 'lg:grid'); ui.manualSection.classList.add('grid'); ui.autoResultsHeader.classList.remove('hidden'); generateAll(); }; img.src = e.target.result; }; reader.readAsDataURL(file); }
+        function resetApp(e) { if (e) e.stopPropagation(); ui.imageUploader.value = ''; originalImage = null; ui.imagePreview.src = '#'; ui.uploadPrompt.classList.remove('hidden'); ui.imagePreviewContainer.classList.add('hidden'); ui.manualSection.classList.add('hidden'); ui.autoResultsHeader.classList.add('hidden'); ui.resultsGrid.innerHTML = ''; ui.manualResultTile.classList.add('hidden'); ui.manualResultPlaceholder.classList.remove('hidden'); }
+        async function generateAll() { await generateManual(); await generateAutoVariations(); }
+        
+        // --- Settings Management ---
+        function getParamsFromUI() {
+            const paletteKey = ui.paletteSelect.value;
+            return {
+                resolution: parseInt(ui.resolutionSlider.value, 10), useDither: ui.ditherCheckbox.checked, paletteKey,
+                colorCount: paletteKey === 'auto' ? parseInt(ui.colorsSlider.value, 10) : palettes[paletteKey].colors.length, 
+                customPalette: paletteKey === 'auto' ? null : palettes[paletteKey].colors,
+                addOutline: ui.outlineCheckbox.checked, outlineThickness: parseFloat(ui.outlineThicknessSlider.value),
+                outlineDynamicColor: ui.outlineDynamicColorCheckbox.checked, outlineColor: ui.outlineColorPicker.value,
+                pre: { brightness: parseInt(ui.preBrightnessSlider.value, 10), contrast: parseInt(ui.preContrastSlider.value, 10), saturation: parseInt(ui.preSaturationSlider.value, 10), hue: parseInt(ui.preHueSlider.value, 10), },
+                post: { brightness: parseInt(ui.postBrightnessSlider.value, 10), contrast: parseInt(ui.postContrastSlider.value, 10), saturation: parseInt(ui.postSaturationSlider.value, 10), hue: parseInt(ui.postHueSlider.value, 10), }
+            };
+        }
+        function applyParamsToUI(params) {
+            ui.resolutionSlider.value = params.resolution; ui.resolutionValue.textContent = params.resolution;
+            ui.ditherCheckbox.checked = params.useDither;
+            ui.paletteSelect.value = params.paletteKey;
+            ui.colorsControl.style.display = params.paletteKey === 'auto' ? 'block' : 'none';
+            if(params.paletteKey === 'auto') { ui.colorsSlider.value = params.colorCount; ui.colorsValue.textContent = params.colorCount; }
+            ui.outlineCheckbox.checked = params.addOutline; ui.outlineOptions.style.display = params.addOutline ? 'block' : 'none';
+            ui.outlineThicknessSlider.value = params.outlineThickness; ui.outlineThicknessValue.textContent = params.outlineThickness.toFixed(1);
+            ui.outlineDynamicColorCheckbox.checked = params.outlineDynamicColor; ui.outlineColorPickerContainer.style.display = params.outlineDynamicColor ? 'none' : 'block';
+            ui.outlineColorPicker.value = params.outlineColor;
+            ['pre', 'post'].forEach(p => {
+                for(const adj of ['brightness', 'contrast', 'saturation', 'hue']) {
+                    if(params[p] && params[p][adj] !== undefined) {
+                        const slider = ui[`${p}${adj.charAt(0).toUpperCase() + adj.slice(1)}Slider`];
+                        const valueEl = ui[`${p}${adj.charAt(0).toUpperCase() + adj.slice(1)}Value`];
+                        slider.value = params[p][adj]; valueEl.textContent = params[p][adj];
+                    }
+                }
+            });
+            generateManual();
+        }
+        function exportSettings() { const params = getParamsFromUI(); ui.jsonIoArea.value = JSON.stringify(params, null, 2); alert('設定がテキストエリアにエクスポートされました。'); }
+        function importSettings() { try { const params = JSON.parse(ui.jsonIoArea.value); applyParamsToUI(params); alert('設定がインポートされました。'); } catch (e) { alert('無効なJSONデータです: ' + e.message); } }
+
+        async function generateManual() { if (!originalImage) return; const params = getParamsFromUI(); generatedManualCanvas = pixelateImage(originalImage, params); let label = `${params.resolution}px, ${palettes[params.paletteKey].name}`; if(params.paletteKey === 'auto') label += ` (${params.colorCount}色)`; updateManualResultTile(generatedManualCanvas, `手動: ${label}`); }
+        function updateManualResultTile(canvas, label) { ui.manualResultPlaceholder.classList.add('hidden'); ui.manualResultTile.classList.remove('hidden'); const displaySize = 320; ui.manualCanvas.width = displaySize; ui.manualCanvas.height = displaySize; const ctx = ui.manualCanvas.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, displaySize, displaySize); const aspect = canvas.width / canvas.height; const drawW = aspect > 1 ? displaySize : displaySize * aspect; const drawH = aspect > 1 ? displaySize / aspect : displaySize; ctx.drawImage(canvas, (displaySize-drawW)/2, (displaySize-drawH)/2, drawW, drawH); ui.manualLabel.textContent = label; }
+        function downloadManualResult() { if (!generatedManualCanvas) return; const link = document.createElement('a'); link.download = `pixel-art-${ui.manualLabel.textContent.replace(/[ ,:()]/g, '_')}.png`; link.href = generatedManualCanvas.toDataURL('image/png'); link.click(); }
+
+        async function generateAutoVariations() {
+            if (!originalImage) return;
+            ui.resultsGrid.innerHTML = ''; ui.loader.style.display = 'flex';
+            const variations = [
+                { res: 64, palKey: 'auto', colors: 16, dither: true, outline: true, outThick: 2, outDyn: true, label: "64px, 16色, 動的アウトライン(太)" },
+                { res: 48, palKey: 'auto', colors: 8, dither: false, preCont: 40, label: "48px, 8色, 事前ハイコントラスト" },
+                { res: 64, palKey: 'gb', dither: true, outline: true, outThick: 1, outDyn: false, outColor: '#0F380F', label: "64px, レトロ携帯機風, 固定アウトライン" },
+                { res: 50, palKey: 'c64', dither: true, postCont: 30, postBright: -10, label: "50px, 80年代PC風, 事後調整" },
+                { res: 80, palKey: 'vaporwave', dither: true, preHue: 30, preSat: 50, label: "80px, サイバーパンク風, 高彩度" },
+                { res: 64, palKey: 'sepia_cool', dither: true, preBright: -10, label: "64px, セピア(寒色)" },
+                { res: 96, palKey: 'ms', dither: true, postSat: -50, postHue: 15, label: "96px, 80年代ゲーム機A風, 事後調整" },
+                { res: 32, palKey: 'auto', colors: 4, dither: false, outline: true, outThick: 1, outDyn: true, label: "32px, 4色, シンプルアウトライン" }
+            ];
+            for (const p of variations) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+                const paletteData = palettes[p.palKey];
+                const params = { resolution: p.res, useDither: p.dither, addOutline: p.outline || false, outlineThickness: p.outThick || 1, outlineDynamicColor: p.outDyn || false, outlineColor: p.outColor || '#000000', colorCount: p.colors || paletteData.colors.length, customPalette: paletteData.colors, paletteKey: p.palKey, pre: { brightness: p.preBright || 0, contrast: p.preCont || 0, saturation: p.preSat || 0, hue: p.preHue || 0 }, post: { brightness: p.postBright || 0, contrast: p.postCont || 0, saturation: p.postSat || 0, hue: p.postHue || 0 } };
+                createAutoResultTile(params, `自動: ${p.label}`);
+            }
+            ui.loader.style.display = 'none';
+        }
+
+        function createAutoResultTile(params, labelText) {
+            const canvas = pixelateImage(originalImage, params);
+            const tile = document.createElement('div');
+            tile.className = 'bg-gray-800 rounded-lg shadow-xl overflow-hidden flex flex-col items-center p-4 transition-transform duration-300 hover:scale-105';
+            const canvasWrapper = document.createElement('div');
+            canvasWrapper.className = 'w-full aspect-square bg-gray-900/50 flex items-center justify-center rounded-md mb-4';
+            const displayCanvas = document.createElement('canvas');
+            displayCanvas.className = 'pixelated max-w-full max-h-full';
+            const displayCtx = displayCanvas.getContext('2d');
+            const displaySize = 256;
+            displayCanvas.width = displaySize; displayCanvas.height = displaySize;
+            const aspect = canvas.width / canvas.height;
+            const drawW = aspect > 1 ? displaySize : displaySize * aspect;
+            const drawH = aspect > 1 ? displaySize / aspect : displaySize;
+            displayCtx.imageSmoothingEnabled = false;
+            displayCtx.drawImage(canvas, (displaySize-drawW)/2, (displaySize-drawH)/2, drawW, drawH);
+            canvasWrapper.appendChild(displayCanvas);
+            const label = document.createElement('p');
+            label.className = 'text-center text-gray-300 font-medium text-sm mb-3';
+            label.textContent = labelText;
+            
+            const btnGroup = document.createElement('div');
+            btnGroup.className = 'w-full grid grid-cols-2 gap-2';
+
+            const downloadButton = document.createElement('button');
+            downloadButton.className = 'w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 text-sm';
+            downloadButton.textContent = 'ダウンロード';
+            downloadButton.onclick = () => { const link = document.createElement('a'); link.download = `pixel-art-${labelText.replace(/[ ,:()]/g, '_')}.png`; link.href = canvas.toDataURL('image/png'); link.click(); };
+
+            const editButton = document.createElement('button');
+            editButton.className = 'w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700 text-sm';
+            editButton.textContent = 'この設定を編集';
+            editButton.onclick = () => { applyParamsToUI(params); document.getElementById('manual-controls').scrollIntoView({ behavior: 'smooth' }); };
+
+            btnGroup.appendChild(downloadButton);
+            btnGroup.appendChild(editButton);
+            
+            tile.appendChild(canvasWrapper);
+            tile.appendChild(label);
+            tile.appendChild(btnGroup);
+            ui.resultsGrid.appendChild(tile);
+        }
+
+        // --- Image Processing Core ---
+        function pixelateImage(img, params) { const {resolution, colorCount, useDither, customPalette, pre, post, addOutline, outlineThickness, outlineDynamicColor, outlineColor} = params; const tempCanvas = document.createElement('canvas'); const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true }); const aspectRatio = img.width / img.height; const targetWidth = Math.round(img.width > img.height ? resolution : resolution * aspectRatio) || 1; const targetHeight = Math.round(img.width > img.height ? resolution / aspectRatio : resolution) || 1; tempCanvas.width = targetWidth; tempCanvas.height = targetHeight; tempCtx.drawImage(img, 0, 0, targetWidth, targetHeight); const imageData = tempCtx.getImageData(0, 0, targetWidth, targetHeight); const pixels = imageData.data; applyColorCorrection(pixels, pre); const palette = customPalette || createPalette(pixels, colorCount); const quantizedIndices = new Uint8Array(targetWidth * targetHeight); for (let y = 0; y < targetHeight; y++) { for (let x = 0; x < targetWidth; x++) { const i = (y * targetWidth + x) * 4; let r = pixels[i], g = pixels[i+1], b = pixels[i+2]; if (useDither) { const dither = (bayerMatrix[y%4][x%4]/16-0.5)*DITHER_FACTOR; r+=dither; g+=dither; b+=dither; } const closestIndex = findClosestColorIndex([r, g, b], palette); quantizedIndices[y * targetWidth + x] = closestIndex; const closestColor = palette[closestIndex]; pixels[i] = closestColor[0]; pixels[i+1] = closestColor[1]; pixels[i+2] = closestColor[2]; }} applyColorCorrection(pixels, post); if (addOutline) { applyOutline(pixels, quantizedIndices, targetWidth, targetHeight, palette, outlineThickness, outlineDynamicColor, outlineColor); } tempCtx.putImageData(imageData, 0, 0); return tempCanvas; }
+        function applyColorCorrection(pixels, params) { const {brightness=0, contrast=0, saturation=0, hue=0} = params; if (brightness===0 && contrast===0 && saturation===0 && hue===0) return; const contrastFactor = (100+contrast)/100; for (let i=0; i<pixels.length; i+=4) { let r=pixels[i], g=pixels[i+1], b=pixels[i+2]; r = (r-128)*contrastFactor+128+brightness; g = (g-128)*contrastFactor+128+brightness; b = (b-128)*contrastFactor+128+brightness; if (saturation !== 0 || hue !== 0) { const hsl=rgbToHsl(r,g,b); hsl[1] *= (100+saturation)/100; hsl[0] = (hsl[0]+hue/360+1)%1; const newRgb = hslToRgb(hsl[0], hsl[1], hsl[2]); r=newRgb[0]; g=newRgb[1]; b=newRgb[2]; } pixels[i]=Math.max(0,Math.min(255,r)); pixels[i+1]=Math.max(0,Math.min(255,g)); pixels[i+2]=Math.max(0,Math.min(255,b)); }}
+        function applyOutline(pixels, indices, width, height, palette, thickness, isDynamic, staticColor) { const edgeMap = new Uint8ClampedArray(width*height); for(let y=1; y<height-1; y++){ for(let x=1; x<width-1; x++){ const i=y*width+x; const c=indices[i]; if(indices[i-1]!==c || indices[i+1]!==c || indices[i-width]!==c || indices[i+width]!==c) edgeMap[i]=1; }} const staticRgb = hexToRgb(staticColor); for(let y=0; y<height; y++) { for(let x=0; x<width; x++) { if(edgeMap[y*width+x]===1){ const pixelColor = isDynamic ? getDynamicOutlineColor(indices, y, x, width, height, palette) : staticRgb; for(let oy=-Math.floor(thickness); oy<=Math.floor(thickness); oy++){ for(let ox=-Math.floor(thickness); ox<=Math.floor(thickness); ox++){ if(Math.sqrt(ox*ox+oy*oy) < thickness){ const nx=x+ox, ny=y+oy; if(nx>=0&&nx<width&&ny>=0&&ny<height){ const i=(ny*width+nx)*4; pixels[i]=pixelColor.r; pixels[i+1]=pixelColor.g; pixels[i+2]=pixelColor.b; }}}}}}}}
+        function getDynamicOutlineColor(indices, y, x, width, height, palette) { const neighbors = [[y, x-1], [y, x+1], [y-1, x], [y+1, x]]; let insideColor = palette[indices[y*width+x]]; for(const[ny,nx]of neighbors){ if(nx>=0&&nx<width&&ny>=0&&ny<height){ const neighborIndex=indices[ny*width+nx]; if(neighborIndex!==indices[y*width+x]){ insideColor=palette[neighborIndex]; break; }}} const hsl=rgbToHsl(insideColor[0],insideColor[1],insideColor[2]); hsl[2]=Math.max(0, hsl[2]*0.5); const rgb=hslToRgb(hsl[0],hsl[1],hsl[2]); return {r:rgb[0], g:rgb[1], b:rgb[2]}; }
+        function createPalette(pixels,k){const sample=[],sampleRate=Math.max(1,Math.floor(pixels.length/4/2e3));for(let i=0;i<pixels.length;i+=4*sampleRate)sample.push([pixels[i],pixels[i+1],pixels[i+2]]);let centroids=sample.slice(0,k).map(p=>[...p]);if(centroids.length<k)centroids=[...centroids,...Array.from({length:k-centroids.length},()=>[255*Math.random(),255*Math.random(),255*Math.random()])];for(let iter=0;iter<10;iter++){const clusters=Array.from({length:k},()=>[]);for(const p of sample)clusters[findClosestColorIndex(p,centroids)].push(p);centroids=clusters.map((c,i)=>c.length>0?c.reduce((s,p)=>[s[0]+p[0],s[1]+p[1],s[2]+p[2]],[0,0,0]).map(v=>v/c.length):centroids[i])}return centroids.map(c=>c.map(Math.round))}
+        function findClosestColorIndex(color,palette){let minDistance=1/0,closestIndex=0;for(let i=0;i<palette.length;i++){const d=(color[0]-palette[i][0])**2+(color[1]-palette[i][1])**2+(color[2]-palette[i][2])**2;if(d<minDistance)minDistance=d,closestIndex=i}return closestIndex}
+        function rgbToHsl(r, g, b) { r/=255; g/=255; b/=255; const max=Math.max(r,g,b),min=Math.min(r,g,b); let h,s,l=(max+min)/2; if(max===min)h=s=0; else { const d=max-min; s=l>0.5?d/(2-max-min):d/(max+min); switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break}h/=6 } return [h,s,l]; }
+        function hslToRgb(h, s, l) { let r, g, b; if (s === 0) { r = g = b = l; } else { const hue2rgb = (p, q, t) => { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1/6) return p + (q - p) * 6 * t; if (t < 1/2) return q; if (t < 2/3) return p + (q - p) * (2/3 - t) * 6; return p; }; const q = l < 0.5 ? l * (1 + s) : l + s - l * s; const p = 2 * l - q; r = hue2rgb(p, q, h + 1/3); g = hue2rgb(p, q, h); b = hue2rgb(p, q, h - 1/3); } return [Math.round(r*255), Math.round(g*255), Math.round(b*255)]; }
+        function hexToRgb(hex) { const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : {r:0,g:0,b:0}; }
+
+        initialize();
+    </script>
+</body>
+</html>
